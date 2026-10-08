@@ -1,0 +1,21 @@
+[project]
+name = "02-weather-tool-app"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "chanchal2003", email = "85550866+chanchal2003@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "dotenv>=0.9.9",
+    "openai>=3.24.0",
+    "requests>=2.34.2",
+]
+
+[project.scripts]
+02-weather-tool-app = "02_weather_tool_app:main"
+
+[build-system]
+requires = ["uv_build>=0.12.14,<0.13.0"]
+build-backend = "uv_build"
