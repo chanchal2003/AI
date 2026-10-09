@@ -2,6 +2,7 @@ import json
 from openai import OpenAI
 from dotenv import load_dotenv
 import requests
+import os
 
 load_dotenv()
 client = OpenAI()
@@ -15,6 +16,14 @@ def get_weather(city : str):
 
     return "Something went wrong"
     
+def run_command(cmd:str):
+    result = os.system(cmd)
+    return result 
+
+available_tools = {
+    "get_weather": get_weather,
+    "run_command": run_command,
+}
 
 SYSTEM_PROMPT = """
 You are a helpful AI assistant that resolves user queries.
@@ -25,7 +34,7 @@ You have access to the following tools:
 
 Available tools:
 - get_weather: takes a city name as input and returns the current weather information for that city.
-
+- run_command : takes system linux command as input string and executes command on user system and returns output
 
 Rules:
 - Strictly follow the JSON output format.
@@ -251,58 +260,58 @@ Output Format:
 
 message_history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-user_query = input("👉 ")
-message_history.append({"role":"user", "content":user_query})
 
-while True:
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        response_format={"type": "json_object"},
-        messages=message_history
-    )
+while True: 
+    user_query = input("👉 ")
+    message_history.append({"role":"user", "content":user_query})
+    while True:
 
-    raw_result = response.choices[0].message.content
-
-    message_history.append({
-        "role": "assistant",
-        "content": raw_result
-    })
-
-    parsed_response = json.loads(raw_result)
-
-    step = parsed_response.get("step")
-    content = parsed_response.get("content")
-
-    # -----------------------------
-    # Start
-    # -----------------------------
-    if step == "Start":
-        print("🚀 Start:", content)
-        continue
-
-    # -----------------------------
-    # Plan
-    # -----------------------------
-    if step == "Plan":
-        print("🧠 Plan:", content)
-        continue
-
-    # -----------------------------
-    # Tool
-    # -----------------------------
-    if step == "Tool":
-
-        function_name = parsed_response.get("functionName")
-        tool_input = parsed_response.get("input")
-
-        print(
-            f"🔧 Calling tool: {function_name}({tool_input})"
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            messages=message_history
         )
 
-        if function_name == "get_weather":
+        raw_result = response.choices[0].message.content
 
-            tool_result = get_weather(tool_input)
+        message_history.append({
+            "role": "assistant",
+            "content": raw_result
+        })
+
+        parsed_response = json.loads(raw_result)
+
+        step = parsed_response.get("step")
+        content = parsed_response.get("content")
+
+        # -----------------------------
+        # Start
+        # -----------------------------
+        if step == "Start":
+            print("🚀 Start:", content)
+            continue
+
+        # -----------------------------
+        # Plan
+        # -----------------------------
+        if step == "Plan":
+            print("🧠 Plan:", content)
+            continue
+
+        # -----------------------------
+        # Tool
+        # -----------------------------
+        if step == "Tool":
+            function_name = parsed_response.get("functionName")
+            tool_input = parsed_response.get("input")
+            print(f"🔧 Calling tool: {function_name}({tool_input})")
+
+            tool_fn = available_tools.get(function_name)
+            if tool_fn:
+                tool_result = tool_fn(tool_input)
+            else:
+                tool_result = f"Unknown tool: {function_name}"
 
             print("🔧 Tool Result:", tool_result)
 
@@ -314,19 +323,18 @@ while True:
                     "content": tool_result
                 })
             })
+            continue
 
-        continue
+        # -----------------------------
+        # Think
+        # -----------------------------
+        if step == "Think":
+            print("💭 Think:", content)
+            continue
 
-    # -----------------------------
-    # Think
-    # -----------------------------
-    if step == "Think":
-        print("💭 Think:", content)
-        continue
-
-    # -----------------------------
-    # Output
-    # -----------------------------
-    if step == "Output":
-        print("🤖:", content)
-        break
+        # -----------------------------
+        # Output
+        # -----------------------------
+        if step == "Output":
+            print("🤖:", content)
+            break
